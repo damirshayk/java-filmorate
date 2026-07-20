@@ -104,9 +104,9 @@ class FilmorateApiTest {
 
     @Test
     void shouldReturnRequiredErrorStatuses() throws Exception {
-        mockMvc.perform(post("/films").contentType(APPLICATION_JSON).content("""
-                        {"name":"Old","description":"Description","releaseDate":"1895-12-27","duration":100}
-                        """))
+        String oldFilmJson = "{\"name\":\"Old\",\"description\":\"Description\","
+                + "\"releaseDate\":\"1895-12-27\",\"duration\":100}";
+        mockMvc.perform(post("/films").contentType(APPLICATION_JSON).content(oldFilmJson))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(get("/users/999")).andExpect(status().isNotFound());
         mockMvc.perform(get("/films/999")).andExpect(status().isNotFound());
@@ -146,15 +146,15 @@ class FilmorateApiTest {
     }
 
     private String userJson(int id, String login, String name) {
-        return """
-                {"id":%d,"email":"%s@example.com","login":"%s","name":"%s","birthday":"2000-01-01"}
-                """.formatted(id, login, login, name);
+        return ("{\"id\":%d,\"email\":\"%s@example.com\",\"login\":\"%s\","
+                + "\"name\":\"%s\",\"birthday\":\"2000-01-01\"}")
+                .formatted(id, login, login, name);
     }
 
     private String filmJson(int id, String name) {
-        return """
-                {"id":%d,"name":"%s","description":"Description","releaseDate":"%s","duration":100}
-                """.formatted(id, name, LocalDate.of(2000, 1, 1));
+        return ("{\"id\":%d,\"name\":\"%s\",\"description\":\"Description\","
+                + "\"releaseDate\":\"%s\",\"duration\":100}")
+                .formatted(id, name, LocalDate.of(2000, 1, 1));
     }
 
     @RestController
