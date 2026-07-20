@@ -53,4 +53,14 @@ public class ErrorHandler {
         log.warn("Объект не найден: {}", exception.getMessage());
         return Map.of("Ошибка", exception.getMessage());
     }
+
+    /**
+     * Обрабатывает непредвиденные ошибки приложения.
+     */
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map<String, String> handleUnexpectedException(Exception exception) {
+        log.error("Непредвиденная ошибка", exception);
+        return Map.of("Ошибка", "Внутренняя ошибка сервера");
+    }
 }

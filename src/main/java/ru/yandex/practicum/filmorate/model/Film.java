@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Фильм, который хранится в приложении.
@@ -31,4 +33,7 @@ public class Film {
     // Продолжительность фильма в минутах.
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private int duration;
+
+    // Идентификаторы пользователей, поставивших лайк.
+    private Set<Integer> likes = new HashSet<>();
 }
