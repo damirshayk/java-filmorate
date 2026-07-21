@@ -1,88 +1,118 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
 
-import java.time.LocalDate;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Контроллер для работы с пользователями.
  */
-@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
-    // Временное хранилище пользователей, пока нет бд.
-    private final Map<Integer, User> users = new HashMap<>();
+    private final UserService userService;
 
-    private int nextId = 1;
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     /**
      * Создает нового пользователя.
+     *
+     * @param user пользователь для создания
+     * @return созданный пользователь
      */
     @PostMapping
     public User create(@Valid @RequestBody User user) {
-        validate(user);
-        user.setId(nextId++);
-        users.put(user.getId(), user);
-        log.info("Добавлен пользователь: id={}, login={}", user.getId(), user.getLogin());
-        return user;
+        return userService.create(user);
     }
 
     /**
-     * Обновляет пользователя, который уже есть в хранилище.
+     * Обновляет существующего пользователя.
+     *
+     * @param user пользователь для обновления
+     * @return обновленный пользователь
      */
     @PutMapping
     public User update(@Valid @RequestBody User user) {
-        if (!users.containsKey(user.getId())) {
-            throw new NotFoundException("Пользователь с id = " + user.getId() + " не найден");
-        }
-
-        validate(user);
-        users.put(user.getId(), user);
-        log.info("Обновлен пользователь: id={}, login={}", user.getId(), user.getLogin());
-        return user;
+        return userService.update(user);
     }
 
     /**
-     * Возвращает всех пользователей.
+     * Возвращает список всех пользователей.
+     *
+     * @return список пользователей
      */
     @GetMapping
     public Collection<User> findAll() {
-        log.info("Запрос на получение всех пользователей, количество={}", users.size());
-        return users.values();
+        return userService.findAll();
     }
 
     /**
-     * Проверяет, что данные пользователя подходят под правила задания.
+     * Возвращает пользователя по его ID.
+     *
+     * @param id ID пользователя
+     * @return пользователь
      */
-    private void validate(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            throw new ValidationException("Электронная почта должна быть непустой и содержать @");
-        }
+    @GetMapping("/{id}")
+    public User findById(@PathVariable int id) {
+        return userService.findById(id);
+    }
 
-        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            throw new ValidationException("Логин не может быть пустым и содержать пробелы");
-        }
+    /**
+     * Добавляет пользователя в друзья.
+     *
+     * @param id       ID пользователя
+     * @param friendId ID друга
+     */
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable int id, @PathVariable int friendId) {
+        userService.addFriend(id, friendId);
+    }
 
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
+    /**
+     * Удаляет пользователя из друзей.
+     *
+     * @param id       ID пользователя
+     * @param friendId ID друга
+     */
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void removeFriend(@PathVariable int id, @PathVariable int friendId) {
+        userService.removeFriend(id, friendId);
+    }
 
-        if (user.getBirthday() == null || user.getBirthday().isAfter(LocalDate.now())) {
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
+    /**
+     * Возвращает список друзей пользователя.
+     *
+     * @param id ID пользователя
+     * @return список друзей
+     */
+    @GetMapping("/{id}/friends")
+    public Collection<User> getFriends(@PathVariable int id) {
+        return userService.getFriends(id);
+    }
+
+    /**
+     * Возвращает список общих друзей двух пользователей.
+     *
+     * @param id      ID первого пользователя
+     * @param otherId ID второго пользователя
+     * @return список общих друзей
+     */
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public Collection<User> getCommonFriends(@PathVariable int id, @PathVariable int otherId) {
+        return userService.getCommonFriends(id, otherId);
     }
 }

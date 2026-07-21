@@ -1,26 +1,31 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Тесты проверки пользователей.
  */
 class UserControllerTest {
     private UserController controller;
+    private Validator validator;
 
     @BeforeEach
     void setUp() {
-        controller = new UserController();
+        controller = new UserController(new UserService(new InMemoryUserStorage()));
+        validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
     @Test
@@ -36,46 +41,46 @@ class UserControllerTest {
 
     @Test
     @DisplayName("Пустой запрос пользователя не проходит проверку")
-    void shouldThrowExceptionWhenUserRequestIsEmpty() {
+    void shouldFailValidationWhenUserRequestIsEmpty() {
         User user = new User();
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     @Test
     @DisplayName("Пустая почта не проходит проверку")
-    void shouldThrowExceptionWhenEmailIsBlank() {
+    void shouldFailValidationWhenEmailIsBlank() {
         User user = makeValidUser();
         user.setEmail("");
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     @Test
     @DisplayName("Почта без символа @ не проходит проверку")
-    void shouldThrowExceptionWhenEmailDoesNotContainAtSign() {
+    void shouldFailValidationWhenEmailDoesNotContainAtSign() {
         User user = makeValidUser();
         user.setEmail("mail.example.com");
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     @Test
     @DisplayName("Пустой логин не проходит проверку")
-    void shouldThrowExceptionWhenLoginIsBlank() {
+    void shouldFailValidationWhenLoginIsBlank() {
         User user = makeValidUser();
         user.setLogin("   ");
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     @Test
     @DisplayName("Логин с пробелом не проходит проверку")
-    void shouldThrowExceptionWhenLoginContainsSpace() {
+    void shouldFailValidationWhenLoginContainsSpace() {
         User user = makeValidUser();
         user.setLogin("my login");
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     @Test
@@ -111,11 +116,11 @@ class UserControllerTest {
 
     @Test
     @DisplayName("Дата рождения в будущем не проходит проверку")
-    void shouldThrowExceptionWhenBirthdayIsInFuture() {
+    void shouldFailValidationWhenBirthdayIsInFuture() {
         User user = makeValidUser();
         user.setBirthday(LocalDate.now().plusDays(1));
 
-        assertThrows(ValidationException.class, () -> controller.create(user));
+        assertFalse(validator.validate(user).isEmpty());
     }
 
     /**

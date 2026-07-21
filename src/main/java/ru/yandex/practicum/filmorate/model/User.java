@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Пользователь приложения.
@@ -23,6 +25,7 @@ public class User {
 
     // Логин пользователя.
     @NotBlank(message = "Логин не может быть пустым")
+    // Регулярное выражение для проверки отсутствия пробелов
     @Pattern(regexp = "\\S+", message = "Логин не должен содержать пробелы")
     private String login;
 
@@ -32,4 +35,7 @@ public class User {
     // Дата рождения пользователя.
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
+
+    // Идентификаторы друзей пользователя.
+    private Set<Integer> friends = new HashSet<>();
 }
