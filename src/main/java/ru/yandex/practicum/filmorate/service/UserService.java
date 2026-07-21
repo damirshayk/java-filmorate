@@ -28,6 +28,7 @@ public class UserService {
      * @return созданный пользователь
      */
     public User create(User user) {
+        setDefaultName(user);
         return userStorage.create(user);
     }
 
@@ -37,6 +38,7 @@ public class UserService {
      * @return обновленный пользователь
      */
     public User update(User user) {
+        setDefaultName(user);
         User storedUser = userStorage.findById(user.getId());
         user.setFriends(storedUser.getFriends());
         return userStorage.update(user);
@@ -130,5 +132,15 @@ public class UserService {
                 .sorted()
                 .map(userStorage::findById)
                 .toList();
+    }
+
+    /**
+     * Устанавливает имя пользователя по умолчанию, если оно не задано.
+     * @param user пользователь
+     */
+    private void setDefaultName(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
     }
 }

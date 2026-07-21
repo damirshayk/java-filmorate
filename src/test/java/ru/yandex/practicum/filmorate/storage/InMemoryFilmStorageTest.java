@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.storage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
@@ -20,23 +19,14 @@ class InMemoryFilmStorageTest {
     }
 
     @Test
-    void shouldCreateFilmReleasedOnCinemaBirthday() {
+    void shouldCreateFilm() {
         Film film = makeFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 28));
 
         Film created = storage.create(film);
 
         assertEquals(1, created.getId());
         assertEquals(created, storage.findById(created.getId()));
         assertEquals(1, storage.findAll().size());
-    }
-
-    @Test
-    void shouldRejectFilmReleasedBeforeCinemaBirthday() {
-        Film film = makeFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 27));
-
-        assertThrows(ValidationException.class, () -> storage.create(film));
     }
 
     @Test

@@ -55,8 +55,9 @@ class FilmServiceTest {
 
         List<Film> popular = service.getPopularFilms(2);
 
-        assertEquals(List.of(twoLikes, oneLike), popular);
-        assertTrue(!popular.contains(noLikes));
+        assertEquals(List.of(twoLikes.getId(), oneLike.getId()),
+                popular.stream().map(Film::getId).toList());
+        assertTrue(popular.stream().noneMatch(film -> film.getId() == noLikes.getId()));
     }
 
     @Test

@@ -3,14 +3,15 @@ package ru.yandex.practicum.filmorate.storage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * Реализация FilmStorage, которая хранит фильмы в памяти.
@@ -18,18 +19,18 @@ import java.util.Map;
 @Slf4j
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
-    private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
-
-    private final Map<Integer, Film> films = new LinkedHashMap<>();
-    private int nextId = 1;
+    // Хранение фильмов в ConcurrentHashMap для потокобезопасности
+    private final Map<Integer, Film> films = new ConcurrentHashMap<>();
+    // AtomicInteger для генерации уникальных идентификаторов фильмов
+    private final AtomicInteger nextId = new AtomicInteger(1);
 
     @Override
     public Film create(Film film) {
-        validate(film);
-        film.setId(nextId++);
-        films.put(film.getId(), film);
+        film.setId(nextId.getAndIncrement());
+        Film savedFilm = copyFilm(film);
+        films.put(savedFilm.getId(), savedFilm);
         log.info("Добавлен фильм: id={}, name={}", film.getId(), film.getName());
-        return film;
+        return copyFilm(film);
     }
 
     @Override
@@ -37,10 +38,13 @@ public class InMemoryFilmStorage implements FilmStorage {
         if (!films.containsKey(film.getId())) {
             throw new NotFoundException("Фильм с id = " + film.getId() + " не найден");
         }
-        validate(film);
-        films.put(film.getId(), film);
-        log.info("Обновлен фильм: id={}, name={}", film.getId(), film.getName());
-        return film;
+
+
+        Film savedFilm = copyFilm(film);
+        films.put(savedFilm.getId(), savedFilm);
+
+        log.info("Обновлен фильм: id={}, name={}", savedFilm.getId(), savedFilm.getName());
+        return copyFilm(savedFilm);
     }
 
     @Override
@@ -56,26 +60,31 @@ public class InMemoryFilmStorage implements FilmStorage {
         if (film == null) {
             throw new NotFoundException("Фильм с id = " + id + " не найден");
         }
-        return film;
+        return copyFilm(film);
     }
 
     @Override
     public Collection<Film> findAll() {
-        return new ArrayList<>(films.values());
+        ArrayList<Film> filmCopies = new ArrayList<>();
+
+        for (Film film : films.values()) {
+            filmCopies.add(copyFilm(film));
+        }
+
+        // Сортируем фильмы по ID перед возвратом
+        filmCopies.sort(Comparator.comparingInt(Film::getId));
+        return filmCopies;
     }
 
-    private void validate(Film film) {
-        if (film.getName() == null || film.getName().isBlank()) {
-            throw new ValidationException("Название фильма не может быть пустым");
-        }
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
-            throw new ValidationException("Описание фильма не может быть длиннее 200 символов");
-        }
-        if (film.getReleaseDate() == null || film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
-            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
-        }
-        if (film.getDuration() <= 0) {
-            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
-        }
+    // Создаем копию объекта Film, чтобы избежать изменения оригинального объекта при обновлении
+    private Film copyFilm(Film film) {
+        Film copy = new Film();
+        copy.setId(film.getId());
+        copy.setName(film.getName());
+        copy.setDescription(film.getDescription());
+        copy.setReleaseDate(film.getReleaseDate());
+        copy.setDuration(film.getDuration());
+        copy.setLikes(new HashSet<>(film.getLikes()));
+        return copy;
     }
 }

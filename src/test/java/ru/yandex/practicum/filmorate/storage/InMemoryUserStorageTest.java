@@ -19,14 +19,13 @@ class InMemoryUserStorageTest {
     }
 
     @Test
-    void shouldCreateUserAndUseLoginAsBlankName() {
+    void shouldCreateUser() {
         User user = makeUser("first");
-        user.setName(" ");
 
         User created = storage.create(user);
 
         assertEquals(1, created.getId());
-        assertEquals("first", created.getName());
+        assertEquals("Name", created.getName());
         assertEquals(created, storage.findById(created.getId()));
         assertEquals(1, storage.findAll().size());
     }

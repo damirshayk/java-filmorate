@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
  */
 @Service
 public class FilmService {
+    private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
 
@@ -27,19 +29,23 @@ public class FilmService {
 
     /**
      * Создает новый фильм.
+     *
      * @param film фильм для создания
      * @return созданный фильм
      */
     public Film create(Film film) {
+        validateReleaseDate(film);
         return filmStorage.create(film);
     }
 
     /**
      * Обновляет существующий фильм.
+     *
      * @param film фильм для обновления
      * @return обновленный фильм
      */
     public Film update(Film film) {
+        validateReleaseDate(film);
         Film storedFilm = filmStorage.findById(film.getId());
         film.setLikes(storedFilm.getLikes());
         return filmStorage.update(film);
@@ -47,6 +53,7 @@ public class FilmService {
 
     /**
      * Удаляет фильм по его ID.
+     *
      * @param id ID фильма
      */
     public void delete(int id) {
@@ -55,6 +62,7 @@ public class FilmService {
 
     /**
      * Находит фильм по его ID.
+     *
      * @param id ID фильма
      * @return найденный фильм
      */
@@ -64,6 +72,7 @@ public class FilmService {
 
     /**
      * Возвращает все фильмы.
+     *
      * @return коллекция всех фильмов
      */
     public Collection<Film> findAll() {
@@ -72,6 +81,7 @@ public class FilmService {
 
     /**
      * Добавляет лайк фильму от пользователя.
+     *
      * @param filmId ID фильма
      * @param userId ID пользователя
      */
@@ -84,6 +94,7 @@ public class FilmService {
 
     /**
      * Удаляет лайк фильму от пользователя.
+     *
      * @param filmId ID фильма
      * @param userId ID пользователя
      */
@@ -96,6 +107,7 @@ public class FilmService {
 
     /**
      * Возвращает список популярных фильмов.
+     *
      * @param count количество фильмов для возврата
      * @return список популярных фильмов
      */
@@ -109,5 +121,20 @@ public class FilmService {
                         .thenComparingInt(Film::getId))
                 .limit(count)
                 .toList();
+    }
+
+    /**
+     * Валидирует дату релиза фильма.
+     *
+     * @param film фильм для валидации
+     * @throws ValidationException если дата релиза раньше 28 декабря 1895 года
+     */
+    private void validateReleaseDate(Film film) {
+        if (film.getReleaseDate() != null
+                && film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
+            throw new ValidationException(
+                    "Дата релиза не может быть раньше 28 декабря 1895 года"
+            );
+        }
     }
 }

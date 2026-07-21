@@ -1,5 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,17 +15,21 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Тесты проверки фильмов.
  */
 class FilmControllerTest {
     private FilmController controller;
+    private Validator validator;
 
     @BeforeEach
     void setUp() {
         controller = new FilmController(new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage()));
+        validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
     @Test
@@ -42,7 +48,7 @@ class FilmControllerTest {
     void shouldThrowExceptionWhenFilmRequestIsEmpty() {
         Film film = new Film();
 
-        assertThrows(ValidationException.class, () -> controller.create(film));
+        assertFalse(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -51,7 +57,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setName("   ");
 
-        assertThrows(ValidationException.class, () -> controller.create(film));
+        assertFalse(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -60,7 +66,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setDescription("a".repeat(200));
 
-        assertDoesNotThrow(() -> controller.create(film));
+        assertTrue(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -69,7 +75,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setDescription("a".repeat(201));
 
-        assertThrows(ValidationException.class, () -> controller.create(film));
+        assertFalse(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -96,7 +102,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setDuration(1);
 
-        assertDoesNotThrow(() -> controller.create(film));
+        assertTrue(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -105,7 +111,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setDuration(0);
 
-        assertThrows(ValidationException.class, () -> controller.create(film));
+        assertFalse(validator.validate(film).isEmpty());
     }
 
     @Test
@@ -114,7 +120,7 @@ class FilmControllerTest {
         Film film = makeValidFilm();
         film.setDuration(-1);
 
-        assertThrows(ValidationException.class, () -> controller.create(film));
+        assertFalse(validator.validate(film).isEmpty());
     }
 
     /**

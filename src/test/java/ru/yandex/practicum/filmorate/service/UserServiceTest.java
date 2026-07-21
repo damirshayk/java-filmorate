@@ -31,7 +31,9 @@ class UserServiceTest {
         assertEquals(1, service.findById(first.getId()).getFriends().size());
         assertTrue(service.findById(first.getId()).getFriends().contains(second.getId()));
         assertTrue(service.findById(second.getId()).getFriends().contains(first.getId()));
-        assertEquals(second, service.getFriends(first.getId()).iterator().next());
+        User friend = service.getFriends(first.getId()).iterator().next();
+        assertEquals(second.getId(), friend.getId());
+        assertTrue(friend.getFriends().contains(first.getId()));
     }
 
     @Test
@@ -55,7 +57,10 @@ class UserServiceTest {
         service.addFriend(second.getId(), common.getId());
 
         assertEquals(1, service.getCommonFriends(first.getId(), second.getId()).size());
-        assertEquals(common, service.getCommonFriends(first.getId(), second.getId()).iterator().next());
+        User foundCommon = service.getCommonFriends(first.getId(), second.getId()).iterator().next();
+        assertEquals(common.getId(), foundCommon.getId());
+        assertTrue(foundCommon.getFriends().contains(first.getId()));
+        assertTrue(foundCommon.getFriends().contains(second.getId()));
     }
 
     @Test

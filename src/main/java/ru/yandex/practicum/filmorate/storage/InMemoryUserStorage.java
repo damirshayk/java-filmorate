@@ -3,14 +3,15 @@ package ru.yandex.practicum.filmorate.storage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * Реализация UserStorage, которая хранит пользователей в памяти.
@@ -18,16 +19,18 @@ import java.util.Map;
 @Slf4j
 @Component
 public class InMemoryUserStorage implements UserStorage {
-    private final Map<Integer, User> users = new LinkedHashMap<>();
-    private int nextId = 1;
+    // Хранение пользователей в ConcurrentHashMap для потокобезопасности
+    private final Map<Integer, User> users = new ConcurrentHashMap<>();
+    // AtomicInteger для генерации уникальных идентификаторов пользователей
+    private final AtomicInteger nextId = new AtomicInteger(1);
 
     @Override
     public User create(User user) {
-        validate(user);
-        user.setId(nextId++);
-        users.put(user.getId(), user);
+        user.setId(nextId.getAndIncrement());
+        User savedUser = copyUser(user);
+        users.put(savedUser.getId(), savedUser);
         log.info("Добавлен пользователь: id={}, login={}", user.getId(), user.getLogin());
-        return user;
+        return copyUser(user);
     }
 
     @Override
@@ -35,10 +38,12 @@ public class InMemoryUserStorage implements UserStorage {
         if (!users.containsKey(user.getId())) {
             throw new NotFoundException("Пользователь с id = " + user.getId() + " не найден");
         }
-        validate(user);
-        users.put(user.getId(), user);
+
+        User savedUser = users.get(user.getId());
+        users.put(savedUser.getId(), copyUser(user));
+
         log.info("Обновлен пользователь: id={}, login={}", user.getId(), user.getLogin());
-        return user;
+        return copyUser(user);
     }
 
     @Override
@@ -54,27 +59,31 @@ public class InMemoryUserStorage implements UserStorage {
         if (user == null) {
             throw new NotFoundException("Пользователь с id = " + id + " не найден");
         }
-        return user;
+        return copyUser(user);
     }
 
     @Override
     public Collection<User> findAll() {
-        return new ArrayList<>(users.values());
+        ArrayList<User> userCopies = new ArrayList<>();
+
+        for (User user : users.values()) {
+            userCopies.add(copyUser(user));
+        }
+
+        // Сортируем пользователей по ID перед возвратом
+        userCopies.sort(Comparator.comparingInt(User::getId));
+        return userCopies;
     }
 
-    private void validate(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            throw new ValidationException("Электронная почта должна быть непустой и содержать @");
-        }
-        if (user.getLogin() == null || user.getLogin().isBlank()
-                || user.getLogin().chars().anyMatch(Character::isWhitespace)) {
-            throw new ValidationException("Логин не может быть пустым и содержать пробелы");
-        }
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        if (user.getBirthday() == null || user.getBirthday().isAfter(LocalDate.now())) {
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
+    // Создаем копию объекта User, чтобы избежать изменения оригинального объекта при обновлении
+    private User copyUser(User user) {
+        User copy = new User();
+        copy.setId(user.getId());
+        copy.setEmail(user.getEmail());
+        copy.setLogin(user.getLogin());
+        copy.setName(user.getName());
+        copy.setBirthday(user.getBirthday());
+        copy.setFriends(new HashSet<>(user.getFriends()));
+        return copy;
     }
 }
