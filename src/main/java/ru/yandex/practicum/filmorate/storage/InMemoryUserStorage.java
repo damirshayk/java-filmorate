@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.storage;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
@@ -13,15 +12,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/*
+/**
  * Реализация UserStorage, которая хранит пользователей в памяти.
  */
 @Slf4j
-@Component
 public class InMemoryUserStorage implements UserStorage {
-    // Хранение пользователей в ConcurrentHashMap для потокобезопасности
     private final Map<Integer, User> users = new ConcurrentHashMap<>();
-    // AtomicInteger для генерации уникальных идентификаторов пользователей
     private final AtomicInteger nextId = new AtomicInteger(1);
 
     @Override
@@ -73,6 +69,42 @@ public class InMemoryUserStorage implements UserStorage {
         // Сортируем пользователей по ID перед возвратом
         userCopies.sort(Comparator.comparingInt(User::getId));
         return userCopies;
+    }
+
+    @Override
+    public void addFriend(int userId, int friendId) {
+        User user = findById(userId);
+        findById(friendId);
+        user.getFriends().add(friendId);
+        update(user);
+    }
+
+    @Override
+    public void removeFriend(int userId, int friendId) {
+        User user = findById(userId);
+        findById(friendId);
+        user.getFriends().remove(friendId);
+        update(user);
+    }
+
+    @Override
+    public Collection<User> getFriends(int userId) {
+        User user = findById(userId);
+        return user.getFriends().stream()
+                .sorted()
+                .map(this::findById)
+                .toList();
+    }
+
+    @Override
+    public Collection<User> getCommonFriends(int userId, int otherId) {
+        User user = findById(userId);
+        User other = findById(otherId);
+        return user.getFriends().stream()
+                .filter(other.getFriends()::contains)
+                .sorted()
+                .map(this::findById)
+                .toList();
     }
 
     // Создаем копию объекта User, чтобы избежать изменения оригинального объекта при обновлении

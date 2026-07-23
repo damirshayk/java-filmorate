@@ -1,9 +1,10 @@
 package ru.yandex.practicum.filmorate.storage;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,15 +14,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/*
+/**
  * Реализация FilmStorage, которая хранит фильмы в памяти.
  */
 @Slf4j
-@Component
 public class InMemoryFilmStorage implements FilmStorage {
-    // Хранение фильмов в ConcurrentHashMap для потокобезопасности
     private final Map<Integer, Film> films = new ConcurrentHashMap<>();
-    // AtomicInteger для генерации уникальных идентификаторов фильмов
     private final AtomicInteger nextId = new AtomicInteger(1);
 
     @Override
@@ -76,6 +74,31 @@ public class InMemoryFilmStorage implements FilmStorage {
         return filmCopies;
     }
 
+    @Override
+    public void addLike(int filmId, int userId) {
+        Film film = findById(filmId);
+        film.getLikes().add(userId);
+        update(film);
+    }
+
+    @Override
+    public void removeLike(int filmId, int userId) {
+        Film film = findById(filmId);
+        film.getLikes().remove(userId);
+        update(film);
+    }
+
+    @Override
+    public Collection<Film> findPopular(int count) {
+        return films.values().stream()
+                .map(this::copyFilm)
+                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size())
+                        .reversed()
+                        .thenComparingInt(Film::getId))
+                .limit(count)
+                .toList();
+    }
+
     // Создаем копию объекта Film, чтобы избежать изменения оригинального объекта при обновлении
     private Film copyFilm(Film film) {
         Film copy = new Film();
@@ -85,6 +108,20 @@ public class InMemoryFilmStorage implements FilmStorage {
         copy.setReleaseDate(film.getReleaseDate());
         copy.setDuration(film.getDuration());
         copy.setLikes(new HashSet<>(film.getLikes()));
+        if (film.getMpa() != null) {
+            Mpa mpa = new Mpa();
+            mpa.setId(film.getMpa().getId());
+            mpa.setName(film.getMpa().getName());
+            copy.setMpa(mpa);
+        }
+        HashSet<Genre> genres = new HashSet<>();
+        for (Genre genre : film.getGenres()) {
+            Genre genreCopy = new Genre();
+            genreCopy.setId(genre.getId());
+            genreCopy.setName(genre.getName());
+            genres.add(genreCopy);
+        }
+        copy.setGenres(genres);
         return copy;
     }
 }

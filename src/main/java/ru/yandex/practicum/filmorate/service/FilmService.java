@@ -1,6 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -9,7 +9,6 @@ import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -21,8 +20,8 @@ public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
 
-    @Autowired
-    public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       @Qualifier("userDbStorage") UserStorage userStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
     }
@@ -46,8 +45,6 @@ public class FilmService {
      */
     public Film update(Film film) {
         validateReleaseDate(film);
-        Film storedFilm = filmStorage.findById(film.getId());
-        film.setLikes(storedFilm.getLikes());
         return filmStorage.update(film);
     }
 
@@ -86,10 +83,8 @@ public class FilmService {
      * @param userId ID пользователя
      */
     public void addLike(int filmId, int userId) {
-        Film film = filmStorage.findById(filmId);
         userStorage.findById(userId);
-        film.getLikes().add(userId);
-        filmStorage.update(film);
+        filmStorage.addLike(filmId, userId);
     }
 
     /**
@@ -99,10 +94,8 @@ public class FilmService {
      * @param userId ID пользователя
      */
     public void removeLike(int filmId, int userId) {
-        Film film = filmStorage.findById(filmId);
         userStorage.findById(userId);
-        film.getLikes().remove(userId);
-        filmStorage.update(film);
+        filmStorage.removeLike(filmId, userId);
     }
 
     /**
@@ -115,12 +108,7 @@ public class FilmService {
         if (count <= 0) {
             throw new ValidationException("Количество фильмов должно быть положительным числом");
         }
-        return filmStorage.findAll().stream()
-                .sorted(Comparator.comparingInt((Film film) -> film.getLikes().size())
-                        .reversed()
-                        .thenComparingInt(Film::getId))
-                .limit(count)
-                .toList();
+        return filmStorage.findPopular(count).stream().toList();
     }
 
     /**
