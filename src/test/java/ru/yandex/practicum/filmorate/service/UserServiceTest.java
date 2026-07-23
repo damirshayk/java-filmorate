@@ -21,7 +21,7 @@ class UserServiceTest {
     }
 
     @Test
-    void shouldAddFriendSymmetricallyWithoutDuplicates() {
+    void shouldAddFriendOneWayWithoutDuplicates() {
         User first = service.create(makeUser("first"));
         User second = service.create(makeUser("second"));
 
@@ -30,22 +30,23 @@ class UserServiceTest {
 
         assertEquals(1, service.findById(first.getId()).getFriends().size());
         assertTrue(service.findById(first.getId()).getFriends().contains(second.getId()));
-        assertTrue(service.findById(second.getId()).getFriends().contains(first.getId()));
+        assertTrue(service.findById(second.getId()).getFriends().isEmpty());
         User friend = service.getFriends(first.getId()).iterator().next();
         assertEquals(second.getId(), friend.getId());
-        assertTrue(friend.getFriends().contains(first.getId()));
+        assertTrue(friend.getFriends().isEmpty());
     }
 
     @Test
-    void shouldRemoveFriendSymmetrically() {
+    void shouldRemoveOnlyRequestedFriendshipDirection() {
         User first = service.create(makeUser("first"));
         User second = service.create(makeUser("second"));
         service.addFriend(first.getId(), second.getId());
+        service.addFriend(second.getId(), first.getId());
 
         service.removeFriend(first.getId(), second.getId());
 
         assertTrue(service.findById(first.getId()).getFriends().isEmpty());
-        assertTrue(service.findById(second.getId()).getFriends().isEmpty());
+        assertTrue(service.findById(second.getId()).getFriends().contains(first.getId()));
     }
 
     @Test
@@ -59,8 +60,7 @@ class UserServiceTest {
         assertEquals(1, service.getCommonFriends(first.getId(), second.getId()).size());
         User foundCommon = service.getCommonFriends(first.getId(), second.getId()).iterator().next();
         assertEquals(common.getId(), foundCommon.getId());
-        assertTrue(foundCommon.getFriends().contains(first.getId()));
-        assertTrue(foundCommon.getFriends().contains(second.getId()));
+        assertTrue(foundCommon.getFriends().isEmpty());
     }
 
     @Test

@@ -76,11 +76,9 @@ public class UserService {
      */
     public void addFriend(int id, int friendId) {
         User user = userStorage.findById(id);
-        User friend = userStorage.findById(friendId);
+        userStorage.findById(friendId);
         user.getFriends().add(friendId);
-        friend.getFriends().add(id);
         userStorage.update(user);
-        userStorage.update(friend);
     }
 
     /**
@@ -90,11 +88,9 @@ public class UserService {
      */
     public void removeFriend(int id, int friendId) {
         User user = userStorage.findById(id);
-        User friend = userStorage.findById(friendId);
+        userStorage.findById(friendId);
         user.getFriends().remove(friendId);
-        friend.getFriends().remove(id);
         userStorage.update(user);
-        userStorage.update(friend);
     }
 
     /**
