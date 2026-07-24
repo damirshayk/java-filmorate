@@ -34,6 +34,12 @@ public class Film {
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private int duration;
 
+    // Возрастной рейтинг фильма.
+    private Mpa mpa;
+
+    // Жанры фильма.
+    private Set<Genre> genres = new HashSet<>();
+
     // Идентификаторы пользователей, поставивших лайк.
     private Set<Integer> likes = new HashSet<>();
 }

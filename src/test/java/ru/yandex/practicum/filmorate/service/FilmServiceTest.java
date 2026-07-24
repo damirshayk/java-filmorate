@@ -1,15 +1,13 @@
 package ru.yandex.practicum.filmorate.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,21 +16,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SpringBootTest
+@Transactional
 class FilmServiceTest {
+    @Autowired
     private FilmService service;
-    private UserStorage userStorage;
-
-    @BeforeEach
-    void setUp() {
-        FilmStorage filmStorage = new InMemoryFilmStorage();
-        userStorage = new InMemoryUserStorage();
-        service = new FilmService(filmStorage, userStorage);
-    }
+    @Autowired
+    private UserService userService;
 
     @Test
     void shouldAddLikeOnceAndRemoveIt() {
         Film film = service.create(makeFilm("Film"));
-        User user = userStorage.create(makeUser("user"));
+        User user = userService.create(makeUser("user"));
 
         service.addLike(film.getId(), user.getId());
         service.addLike(film.getId(), user.getId());
@@ -47,8 +42,8 @@ class FilmServiceTest {
         Film noLikes = service.create(makeFilm("No likes"));
         Film oneLike = service.create(makeFilm("One like"));
         Film twoLikes = service.create(makeFilm("Two likes"));
-        User first = userStorage.create(makeUser("first"));
-        User second = userStorage.create(makeUser("second"));
+        User first = userService.create(makeUser("first"));
+        User second = userService.create(makeUser("second"));
         service.addLike(oneLike.getId(), first.getId());
         service.addLike(twoLikes.getId(), first.getId());
         service.addLike(twoLikes.getId(), second.getId());
@@ -69,7 +64,7 @@ class FilmServiceTest {
     @Test
     void shouldThrowWhenFilmOrUserDoesNotExist() {
         Film film = service.create(makeFilm("Film"));
-        User user = userStorage.create(makeUser("user"));
+        User user = userService.create(makeUser("user"));
 
         assertThrows(NotFoundException.class, () -> service.addLike(99, user.getId()));
         assertThrows(NotFoundException.class, () -> service.addLike(film.getId(), 99));
