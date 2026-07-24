@@ -5,26 +5,30 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Тесты проверки пользователей.
  */
+@SpringBootTest
+@Transactional
 class UserControllerTest {
+    @Autowired
     private UserController controller;
     private Validator validator;
 
     @BeforeEach
     void setUp() {
-        controller = new UserController(new UserService(new InMemoryUserStorage()));
         validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
@@ -35,7 +39,7 @@ class UserControllerTest {
 
         User created = controller.create(user);
 
-        assertEquals(1, created.getId());
+        assertTrue(created.getId() > 0);
         assertEquals("login", created.getLogin());
     }
 

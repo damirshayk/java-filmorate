@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.mapper.UserRowMapper;
 
@@ -21,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 class UserDbStorageTest {
     private final UserDbStorage userStorage;
+    private final JdbcTemplate jdbc;
 
     @Test
     void shouldCreateFindAndListUsers() {
@@ -76,6 +79,55 @@ class UserDbStorageTest {
         assertThat(userStorage.getFriends(first.getId()))
                 .extracting(User::getId)
                 .containsExactly(common.getId());
+    }
+
+    @Test
+    void shouldLoadFriendIdsForSeveralUsersWithoutMixingThem() {
+        User first = userStorage.create(makeUser("first"));
+        User second = userStorage.create(makeUser("second"));
+        User third = userStorage.create(makeUser("third"));
+
+        userStorage.addFriend(first.getId(), second.getId());
+        userStorage.addFriend(second.getId(), third.getId());
+        userStorage.addFriend(third.getId(), first.getId());
+
+        assertThat(userStorage.findAll())
+                .satisfiesExactly(
+                        user -> assertThat(user.getFriends()).containsExactly(second.getId()),
+                        user -> assertThat(user.getFriends()).containsExactly(third.getId()),
+                        user -> assertThat(user.getFriends()).containsExactly(first.getId()));
+    }
+
+    @Test
+    void shouldChangeFriendshipStatusWhenRelationBecomesMutual() {
+        User first = userStorage.create(makeUser("first"));
+        User second = userStorage.create(makeUser("second"));
+
+        userStorage.addFriend(first.getId(), second.getId());
+
+        assertThat(friendshipStatus(first.getId(), second.getId()))
+                .isEqualTo(FriendshipStatus.UNCONFIRMED);
+
+        userStorage.addFriend(second.getId(), first.getId());
+
+        assertThat(friendshipStatus(first.getId(), second.getId()))
+                .isEqualTo(FriendshipStatus.CONFIRMED);
+        assertThat(friendshipStatus(second.getId(), first.getId()))
+                .isEqualTo(FriendshipStatus.CONFIRMED);
+
+        userStorage.removeFriend(first.getId(), second.getId());
+
+        assertThat(friendshipStatus(second.getId(), first.getId()))
+                .isEqualTo(FriendshipStatus.UNCONFIRMED);
+    }
+
+    private FriendshipStatus friendshipStatus(int requesterId, int addresseeId) {
+        String status = jdbc.queryForObject("""
+                SELECT status
+                FROM friendships
+                WHERE requester_id = ? AND addressee_id = ?
+                """, String.class, requesterId, addresseeId);
+        return FriendshipStatus.valueOf(status);
     }
 
     private User makeUser(String login) {

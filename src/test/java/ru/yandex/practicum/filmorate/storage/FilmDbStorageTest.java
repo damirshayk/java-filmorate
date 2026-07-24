@@ -100,6 +100,32 @@ class FilmDbStorageTest {
     }
 
     @Test
+    void shouldLoadRelationsForSeveralFilmsWithoutMixingThem() {
+        User firstUser = userStorage.create(makeUser("first"));
+        User secondUser = userStorage.create(makeUser("second"));
+        Film firstFilm = filmStorage.create(makeFilm("First", 1, 1, 3));
+        Film secondFilm = filmStorage.create(makeFilm("Second", 2, 2, 4));
+
+        filmStorage.addLike(firstFilm.getId(), firstUser.getId());
+        filmStorage.addLike(secondFilm.getId(), secondUser.getId());
+
+        assertThat(filmStorage.findAll())
+                .satisfiesExactly(
+                        film -> {
+                            assertThat(film.getGenres())
+                                    .extracting(Genre::getId)
+                                    .containsExactly(1, 3);
+                            assertThat(film.getLikes()).containsExactly(firstUser.getId());
+                        },
+                        film -> {
+                            assertThat(film.getGenres())
+                                    .extracting(Genre::getId)
+                                    .containsExactly(2, 4);
+                            assertThat(film.getLikes()).containsExactly(secondUser.getId());
+                        });
+    }
+
+    @Test
     void shouldRejectUnknownMpaAndGenre() {
         assertThatThrownBy(() -> filmStorage.create(makeFilm("Unknown MPA", 9999)))
                 .isInstanceOf(NotFoundException.class);

@@ -12,13 +12,15 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.mapper.FilmRowMapper;
-import ru.yandex.practicum.filmorate.storage.mapper.GenreRowMapper;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,7 +42,6 @@ public class FilmDbStorage implements FilmStorage {
             """;
     private final JdbcTemplate jdbc;
     private final FilmRowMapper filmMapper;
-    private final GenreRowMapper genreMapper;
     private final GenreStorage genreStorage;
     private final MpaStorage mpaStorage;
     private final UserStorage userStorage;
@@ -48,14 +49,12 @@ public class FilmDbStorage implements FilmStorage {
     public FilmDbStorage(
             JdbcTemplate jdbc,
             FilmRowMapper filmMapper,
-            GenreRowMapper genreMapper,
             GenreStorage genreStorage,
             MpaStorage mpaStorage,
             @Qualifier("userDbStorage") UserStorage userStorage
     ) {
         this.jdbc = jdbc;
         this.filmMapper = filmMapper;
-        this.genreMapper = genreMapper;
         this.genreStorage = genreStorage;
         this.mpaStorage = mpaStorage;
         this.userStorage = userStorage;
@@ -133,7 +132,8 @@ public class FilmDbStorage implements FilmStorage {
         if (films.isEmpty()) {
             throw filmNotFound(id);
         }
-        return loadRelations(films.getFirst());
+        loadRelations(films);
+        return films.getFirst();
     }
 
     @Override
@@ -141,7 +141,7 @@ public class FilmDbStorage implements FilmStorage {
         List<Film> films = jdbc.query(
                 SELECT_FILM + " ORDER BY f.film_id",
                 filmMapper);
-        films.forEach(this::loadRelations);
+        loadRelations(films);
         return films;
     }
 
@@ -194,7 +194,7 @@ public class FilmDbStorage implements FilmStorage {
                         """,
                 filmMapper,
                 count);
-        films.forEach(this::loadRelations);
+        loadRelations(films);
         return films;
     }
 
@@ -227,25 +227,50 @@ public class FilmDbStorage implements FilmStorage {
     }
 
 
-    // Загружает связанные объекты (жанры и лайки) для фильма.
-    private Film loadRelations(Film film) {
-        LinkedHashSet<Genre> genres = new LinkedHashSet<>(jdbc.query("""
-                        SELECT g.genre_id, g.name
-                        FROM genres g
-                        JOIN film_genres fg ON fg.genre_id = g.genre_id
-                        WHERE fg.film_id = ?
-                        ORDER BY g.genre_id
-                        """,
-                genreMapper,
-                film.getId()));
-        film.setGenres(genres);
-        film.setLikes(new LinkedHashSet<>(jdbc.queryForList("""
-                SELECT user_id
+    // Загружает жанры и лайки для списка фильмов двумя запросами.
+    private void loadRelations(List<Film> films) {
+        if (films.isEmpty()) {
+            return;
+        }
+
+        Map<Integer, Film> filmsById = new LinkedHashMap<>();
+        for (Film film : films) {
+            film.setGenres(new LinkedHashSet<>());
+            film.setLikes(new LinkedHashSet<>());
+            filmsById.put(film.getId(), film);
+        }
+
+        String placeholders = String.join(", ", Collections.nCopies(films.size(), "?"));
+        Object[] filmIds = filmsById.keySet().toArray();
+
+        jdbc.query("""
+                        SELECT fg.film_id, g.genre_id, g.name
+                        FROM film_genres fg
+                        JOIN genres g ON g.genre_id = fg.genre_id
+                        WHERE fg.film_id IN (%s)
+                        ORDER BY fg.film_id, g.genre_id
+                        """.formatted(placeholders),
+                resultSet -> {
+                    Film film = filmsById.get(resultSet.getInt("film_id"));
+                    Genre genre = new Genre();
+                    genre.setId(resultSet.getInt("genre_id"));
+                    genre.setName(resultSet.getString("name"));
+                    film.getGenres().add(genre);
+                },
+                filmIds);
+
+        jdbc.query("""
+                        SELECT film_id, user_id
                 FROM likes
-                WHERE film_id = ?
-                ORDER BY user_id
-                """, Integer.class, film.getId())));
-        return film;
+                        WHERE film_id IN (%s)
+                        ORDER BY film_id, user_id
+                        """.formatted(placeholders),
+                resultSet -> {
+                    filmsById.get(resultSet.getInt("film_id"))
+                            .getLikes()
+                            .add(resultSet.getInt("user_id"));
+                },
+                filmIds);
     }
 
     // Возвращает исключение NotFoundException с сообщением о том, что фильм с указанным идентификатором не найден.

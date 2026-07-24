@@ -5,11 +5,11 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 
@@ -22,13 +22,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Тесты проверки фильмов.
  */
+@SpringBootTest
+@Transactional
 class FilmControllerTest {
+    @Autowired
     private FilmController controller;
     private Validator validator;
 
     @BeforeEach
     void setUp() {
-        controller = new FilmController(new FilmService(new InMemoryFilmStorage(), new InMemoryUserStorage()));
         validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 

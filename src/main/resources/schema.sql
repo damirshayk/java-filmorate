@@ -28,9 +28,18 @@ CREATE TABLE IF NOT EXISTS films (
 CREATE TABLE IF NOT EXISTS friendships (
     requester_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     addressee_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'UNCONFIRMED' NOT NULL,
     PRIMARY KEY (requester_id, addressee_id),
-    CHECK (requester_id <> addressee_id)
+    CHECK (requester_id <> addressee_id),
+    CONSTRAINT chk_friendship_status CHECK (status IN ('UNCONFIRMED', 'CONFIRMED'))
 );
+
+ALTER TABLE friendships
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'UNCONFIRMED' NOT NULL;
+
+ALTER TABLE friendships
+    ADD CONSTRAINT IF NOT EXISTS chk_friendship_status
+    CHECK (status IN ('UNCONFIRMED', 'CONFIRMED'));
 
 CREATE TABLE IF NOT EXISTS likes (
     film_id INTEGER NOT NULL REFERENCES films(film_id) ON DELETE CASCADE,
